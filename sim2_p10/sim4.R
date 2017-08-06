@@ -9,7 +9,7 @@ library(grpreg)
 library(splines)
 library(plyr)
 
-##### n=250, p=50, S1
+##### n=250, p=50, S2
 ## Generate nonparametric functions
 genr.np.func <- function(U, np.perc){
   n <- nrow(U)
@@ -112,7 +112,7 @@ data.gener <- function(n, p, q, q1, np.ind, np.perc, beta.true, alpha.true){
   # totaln: number of total subjects
   m <- length(n); totaln <- sum(n)
   X <- matrix(0, totaln, p); U <- matrix(0, totaln, q); err <- rep(0, totaln)
-  X <- rmvnorm(totaln, mean = rep(0, p), sigma = 3 * diag(p)) #covariates are independent
+  X <- rmvnorm(totaln, mean = rep(0, p), sigma = cresigma(p)) #covariates are independent
   # X = rmvnorm(n,mean=rep(0,p),sigma=3*corr.M(p,0.5,"AR1")) #covariates are correlated
   U <- matrix(runif(totaln * q, min = -3, max = 3), nr = totaln)   #var(U)=(max-min)^2/12=3
   err <- rnorm(totaln, mean = 0, sd = 1)
@@ -417,8 +417,8 @@ alpha.true[index.interac(c(1, 3), p, m)] <- c(1.5, 1, 1)
 alpha.true[index.interac(2:3, p, m)] <- c(1, 0.5, 0.5)
 alpha.true[index.interac(4:5, p, m)] <- c(0.5, 1.5, 2)
 
-dir.create(paste("./sim1", run, "_p", p, sep = ''), showWarnings = FALSE)
-setwd(paste("./sim1", run, "_p", p, sep = ''))
+dir.create(paste("./sim4", run, "_p", p, sep = ''), showWarnings = FALSE)
+setwd(paste("./sim4", run, "_p", p, sep = ''))
 
 sim.run <- function(run, n, p, q, q1, beta.true, alpha.true){
   #make arrays to save the results

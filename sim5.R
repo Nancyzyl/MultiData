@@ -412,13 +412,13 @@ m <- 3
 beta.true <- rep(0, m * p)
 beta.true[1:15] <- c(2, 0.5, 2, 1.5, 1, 1, 1, 1, 0.8, 1, 1.5, 1, 0.8, 2, 1.5)
 alpha.true <- rep(0, m * p * (p - 1) / 2)
-alpha.true[index.interac(1:2, p, m)] <- c(2, 2, 1.5)
-alpha.true[index.interac(c(1, 3), p, m)] <- c(1.5, 1, 1)
-alpha.true[index.interac(2:3, p, m)] <- c(1, 0.5, 0.5)
-alpha.true[index.interac(4:5, p, m)] <- c(0.5, 1.5, 2)
+alpha.true[1:3] <- c(2, 2, 1.5)
+alpha.true[4:6] <- c(1.5, 1, 1)
+alpha.true[100:102] <- c(1, 0.5, 0.5)
+alpha.true[13:15] <- c(0.5, 1.5, 2)
 
-dir.create(paste("./sim1", run, "_p", p, sep = ''), showWarnings = FALSE)
-setwd(paste("./sim1", run, "_p", p, sep = ''))
+dir.create(paste("./sim5", run, "_p", p, sep = ''), showWarnings = FALSE)
+setwd(paste("./sim5", run, "_p", p, sep = ''))
 
 sim.run <- function(run, n, p, q, q1, beta.true, alpha.true){
   #make arrays to save the results
