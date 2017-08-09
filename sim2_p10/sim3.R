@@ -425,24 +425,23 @@ sim.run <- function(run, n, p, q, q1, beta.true, alpha.true){
   m <- length(n); pp <- p * m
   beta.trues <- matrix(beta.true, ncol = p)
   alpha.trues <- matrix(alpha.true, ncol = p * (p - 1) / 2)
-  beta.list <- array(0, dim = c(p * m, run), dimnames = list(paste0("X", 1:(p * m), NULL)))
+  beta.list <- beta.temp <- array(0, dim = c(p * m, run), dimnames = list(paste0("X", 1:(p * m), NULL)))
   beta.list3 <- array(0, dim = c(p, run), dimnames = list(paste0("X", 1:p, NULL)))
   beta.lists <- array(0, dim = c(p, run, m))
-  fU.list <- fU.list3 <- array(0, dim = c(sum(n), run))
-  fU.lists <- array(NA, dim = c(max(n), run, m))
+  fU.list <- fU.list3 <- fU.lists <- array(0, dim = c(sum(n), run))
   name.X <- name.XX <- NULL
   for (k in 1:(p - 1)) name.X <- c(name.X, (paste0(paste0("X", k), paste0("X", (k + 1):p))))
   for (k in 1:length(name.X)) name.XX <- c(name.XX, rep(name.X[k], m))
-  alpha.list <- array(0, dim = c(m * p * (p - 1) / 2, run), dimnames = list(name.XX, NULL))
+  alpha.list <- alpha.temp <- array(0, dim = c(m * p * (p - 1) / 2, run), dimnames = list(name.XX, NULL))
   alpha.list3 <- array(0, dim = c(p * (p - 1) / 2, run), dimnames = list(name.X, NULL))
   alpha.lists <- array(0, dim = c(p * (p - 1) / 2, run, m))
   ##################################################
-  Err.list <- matrix(0, run, 4, dimnames = list(NULL, c("PE", "MSE.beta", "MSE.alpha", "RASE")))
+  Err.list <- Err.temp <- matrix(0, run, 4, dimnames = list(NULL, c("PE", "MSE.beta", "MSE.alpha", "RASE")))
   Err.list3 <- matrix(0, run, 4, dimnames = list(NULL, c("PE", "MSE.beta", "MSE.alpha", "RASE")))
   Err.lists <- array(0, dim = c(run, 4, m), dimnames = list(NULL, c("PE", "MSE.beta", "MSE.alpha", "RASE")))
   perf.beta.m3 <- perf.alpha.m3 <- matrix(0, nrow = 4, ncol = run)
   perf.beta.m2 <- perf.alpha.m2 <- matrix(0, nrow = 4, ncol = run)
-  perf.beta.m1 <- perf.alpha.m1 <- array(0, dim = c(4, run, m))
+  perf.beta.m1 <- perf.alpha.m1 <- matrix(0, nrow = 4, ncol = run)
   N.bs <- N.bs3 <- rep(0, run)
   N.bss <- matrix(0, nrow = m, ncol = run)
   #repeat simulations for run times 
@@ -461,52 +460,59 @@ sim.run <- function(run, n, p, q, q1, beta.true, alpha.true){
     sepdata3 <- list(Y = my$Y, XX = my$X, IXX = my$IX, U = my$U, fU = my$fU)
     result3 <- est.perf(sepdata3, sum(n), N.bs = seq(4, 24, 4), beta.true = beta.true, alpha.true = alpha.true,
                         case = 3) #M3
-    perf.beta.m3[, i] <- PerformEva(beta.trues, matrix(result2$beta, ncol = p))
+    perf.beta.m3[, i] <- PerformEva(beta.trues, matrix(result3$beta, ncol = p))
     perf.alpha.m3[, i] <- PerformEva(alpha.trues, matrix(result3$alpha, ncol = p * (p - 1) / 2))
     beta.list3[, i] <- result3$beta
     alpha.list3[, i] <- result3$alpha
     fU.list3[, i] <- rowSums(result3$fU)
     Err.list3[i, ] <- c(result3$PE, result3$MSE, result3$MSE2, result3$RASE)
     N.bs3[i] <- result3$N.bs
+    fU.temp <- NULL
     for(t in 1:length(n)){    #M1
       print(paste("lay", t, " "))
       newdata <- data.regener(sepdata, n, t)
       result <- est.perf(newdata, n[t], N.bs = seq(4, 24, 4), beta.trues[t, ], alpha.trues[t, ])
-      perf.beta.m1[, i, t] <- PerformEva(beta.trues, matrix(result2$beta, ncol = p))
-      perf.alpha.m1[, i, t] <- PerformEva(alpha.trues, matrix(result$alpha, ncol = p * (p - 1) / 2))
       beta.lists[, i, t] <- result$beta
       alpha.lists[, i, t] <- result$alpha
-      fU.lists[(1:length(rowSums(result$fU))), i, t] <- rowSums(result$fU)
+      fU.temp <- c(fU.temp, rowSums(result$fU))
       Err.lists[i, , t] <- c(result$PE, result$MSE, result$MSE2, result$RASE)
       N.bss[t, i] <- result$N.bs
     }
+    beta.temp[, i] <- as.vector(t(beta.lists[, i, ]))
+    alpha.temp[, i] <- as.vector(t(alpha.lists[, i, ]))
+    fU.lists[, i] <- fU.temp
+    Err.temp[i, ] <- apply(Err.lists[i, , ], 1, mean)
+    perf.beta.m1[, i] <- PerformEva(beta.trues, matrix(beta.temp[, i], ncol = p))
+    perf.alpha.m1[, i] <- PerformEva(alpha.trues, matrix(alpha.temp[, i], ncol = p * (p - 1) / 2))
   }
+  #M2
   beta <- cbind(apply(beta.list, 1, mean), apply(beta.list, 1, sd))
   alpha <- cbind(apply(alpha.list, 1, mean), apply(alpha.list, 1, sd))
-  fU <- cbind(apply(fU.list, 1,mean), apply(fU.list, 1, sd))
+  fU <- cbind(apply(fU.list, 1, mean), apply(fU.list, 1, sd))
   Err <- rbind(colMeans(Err.list), apply(Err.list, 2, sd))
   perf.beta2 <- apply(perf.beta.m2, 1, mean) 
   perf.alpha2 <- apply(perf.alpha.m2, 1, mean)
-  betas <- alphas <- Errs <- perf.beta1 <- perf.alpha1 <- NULL
-  for(i in 1:m){
-    betas <- cbind(betas, apply(beta.lists[, , i], 1, mean), apply(beta.lists[, , i], 1, sd))
-    alphas <- cbind(alphas, apply(alpha.lists[, , i], 1, mean), apply(alpha.lists[, , i], 1, sd))
-    Errs <- rbind(Errs, colMeans(Err.lists[, , i]), apply(Err.lists[, , i], 2, sd))
-    perf.beta1 <- rbind(perf.beta1, apply(perf.beta.m1[, , i], 1, mean))
-    perf.alpha1 <- rbind(perf.alpha1, apply(perf.alpha.m1[, , i], 1, mean))
-  }
+  #M1
+  betas <- cbind(apply(beta.temp, 1, mean), apply(beta.temp, 1, sd))
+  alphas <- cbind(apply(alpha.temp, 1, mean), apply(alpha.temp, 1, sd))
+  fUs <- cbind(apply(fU.lists, 1, mean), apply(fU.lists, 1, sd))
+  Errs <- rbind(colMeans(Err.temp), apply(Err.temp, 2, sd))
+  perf.beta1 <- apply(perf.beta.m1, 1, mean)
+  perf.alpha1 <- apply(perf.alpha.m1, 1, mean)
+  #M3
   beta3 <- cbind(apply(beta.list3, 1, mean), apply(beta.list3, 1, sd))
   alpha3 <- cbind(apply(alpha.list3, 1, mean), apply(alpha.list3, 1, sd))
   fU3 <- cbind(apply(fU.list3, 1,mean), apply(fU.list3, 1, sd))
   Err3 <- rbind(colMeans(Err.list3), apply(Err.list3, 2, sd))
   perf.beta3 <- apply(perf.beta.m3, 1, mean) 
   perf.alpha3 <- apply(perf.alpha.m3, 1, mean)
+  #
   perf.beta <- rbind(perf.beta1, perf.beta2, perf.beta3)
   perf.alpha <- rbind(perf.alpha1, perf.alpha2, perf.alpha3)
   return(list(beta.list = beta.list, beta = beta, alpha.list = alpha.list, alpha = alpha,
               fU = fU, Err.list = Err.list, Err = Err, N.bs = N.bs, perf.beta = perf.beta,
-              beta.lists = beta.lists, betas = betas, alpha.lists = alpha.lists, alphas = alphas,
-              Err.lists = Err.lists, Errs = Errs, N.bss = N.bss, perf.alpha = perf.alpha,
+              beta.temp = beta.temp, betas = betas, alpha.temp = alpha.temp, alphas = alphas,
+              Err.temp = Err.temp, Errs = Errs, N.bss = N.bss, perf.alpha = perf.alpha,
               beta.list3 = beta.list3, beta3 = beta3, alpha.list3 = alpha.list3, alpha3 = alpha3,
               fU3 = fU3, Err.list3 = Err.list3, Err3 = Err3, N.bs3 = N.bs3))
 }
@@ -532,17 +538,25 @@ for(i in 1:run){
   tima <- tima + res_sum
 }
 
-est.betas <- est$beta.lists
-est.betas[est.betas != 0] = 1
-timbs <- matrix(0, ncol = p, nrow = m)
-est.alphas <- est$alpha.lists
-est.alphas[est.alphas != 0] = 1
-timas <- matrix(0, ncol = p * (p - 1) / 2, nrow = m)
-for(i in 1:m){
-  timbs[i, ] <- apply(est.betas[, , i], 1, sum)
-  timas[i, ] <- apply(est.alphas[, , i], 1, sum)
-}
 
+est.betas <- est$beta.temp
+est.betas[est.betas != 0] = 1
+timbs <- 0
+for(i in 1:run){
+  temp <- matrix(est.betas[, i], ncol=p)
+  res_sum <- apply(temp, 2, sum)
+  res_sum[res_sum != 0] = 1
+  timbs <- timbs + res_sum
+}
+est.alphas <- est$alpha.temp
+est.alphas[est.alphas != 0] = 1
+timas <- 0
+for(i in 1:run){
+  temp <- matrix(est.alphas[, i], nrow=m)
+  res_sum <- apply(temp, 2, sum)
+  res_sum[res_sum != 0] = 1
+  timas <- timas + res_sum
+}
 
 est.beta3 <- est$beta.list3
 est.beta3[est.beta3 != 0] = 1
@@ -556,3 +570,4 @@ write.csv(rbind(timas, tima, tima3), "tima.csv")
 write.csv(round(rbind.fill(data.frame(est$Errs), data.frame(est$Err), data.frame(est$Err3)), 3), "err.csv")
 write.csv(round(est$perf.beta, 3), 'perfBeta.csv')
 write.csv(round(est$perf.alpha, 3), 'perfAlpha.csv')
+
